@@ -7,10 +7,13 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
+  SafeAreaView,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { RootState } from '../store';
 import { Event } from '../types';
 import { lightTheme } from '../theme/colors';
@@ -21,10 +24,12 @@ const { width, height } = Dimensions.get('window');
 export default function MapViewWebScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigation = useNavigation();
   const events = useSelector((state: RootState) => state.events.events);
   const currency = useSelector((state: RootState) => state.currency.selectedCurrency);
   const currencyState = useSelector((state: RootState) => state.currency);
   const currencies = useSelector((state: RootState) => state.currency.currencies);
+  const { colors } = useSelector((state: RootState) => state.theme);
   
   // Filter events with coordinates
   const eventsWithLocation = events.filter(event => 
@@ -115,19 +120,31 @@ export default function MapViewWebScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Lade Karte...</Text>
-      </View>
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <View style={styles.headerWithBackButton}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.loadingText, { color: colors.text }]}>Lade Karte...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Events Karte</Text>
-        <Text style={styles.headerSubtitle}>
-          {eventsWithLocation.length} Events mit Standort
-        </Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card }]}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Events Karte</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+              {eventsWithLocation.length} Events mit Standort
+            </Text>
+          </View>
+        </View>
       </View>
       
       <WebView
@@ -149,7 +166,7 @@ export default function MapViewWebScreen() {
           </Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -208,5 +225,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: lightTheme.textSecondary,
     textAlign: 'center',
+  },
+  headerWithBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginLeft: 12,
   },
 });

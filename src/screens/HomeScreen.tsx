@@ -3,8 +3,8 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, Image }
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootState } from '../store';
-import { setSelectedCategory, initializeFilters } from '../store/eventSlice';
+import { RootState, AppDispatch } from '../store';
+import { setSelectedCategory, initializeFilters, fetchEvents } from '../store/eventSlice';
 import { Event, EventCategory, RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPrice } from '../utils/currency';
@@ -13,8 +13,8 @@ type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const dispatch = useDispatch();
-  const { filteredEvents, selectedCategory } = useSelector((state: RootState) => state.events);
+  const dispatch = useDispatch<AppDispatch>();
+  const { filteredEvents, selectedCategory, isLoading } = useSelector((state: RootState) => state.events);
   const { user, isLoggedIn } = useSelector((state: RootState) => state.auth);
   const { colors } = useSelector((state: RootState) => state.theme);
   const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
@@ -22,6 +22,7 @@ const HomeScreen: React.FC = () => {
   const categories: (EventCategory | 'Alle')[] = ['Alle', 'Hausparty', 'Party', 'Gaming', 'Outdoor'];
 
   useEffect(() => {
+    dispatch(fetchEvents());
     dispatch(initializeFilters());
     dispatch(setSelectedCategory('Alle'));
   }, [dispatch]);

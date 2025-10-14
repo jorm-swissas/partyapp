@@ -16,9 +16,9 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { addEvent } from '../store/eventSlice';
+import { createEvent } from '../store/eventSlice';
 import { EventCategory, RootStackParamList, ThemeColors, Currency } from '../types';
-import { RootState } from '../store';
+import { RootState, AppDispatch } from '../store';
 import { formatPrice } from '../utils/currency';
 import * as Location from 'expo-location';
 import LocationAutocompleteFree from '../components/LocationAutocompleteFree';
@@ -27,7 +27,7 @@ type CreateEventScreenNavigationProp = StackNavigationProp<RootStackParamList, '
 
 const CreateEventScreen: React.FC = () => {
   const navigation = useNavigation<CreateEventScreenNavigationProp>();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { user, isLoggedIn } = useSelector((state: RootState) => state.auth);
   const { colors } = useSelector((state: RootState) => state.theme);
   const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
@@ -91,7 +91,7 @@ const CreateEventScreen: React.FC = () => {
       createdBy: user.id, // Event mit User verknüpfen
     };
 
-    dispatch(addEvent(eventData));
+    dispatch(createEvent(eventData));
     Alert.alert('Erfolg', 'Event wurde erstellt!', [
       { text: 'OK', onPress: () => navigation.goBack() }
     ]);

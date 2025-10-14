@@ -3,8 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'reac
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootState } from '../store';
-import { mockLogin, mockRegister, logout, clearError } from '../store/authSlice';
+import { RootState, AppDispatch } from '../store';
+import { firebaseLogin, firebaseRegister, firebaseLogout, clearError } from '../store/authSlice';
 import { RootStackParamList, LoginForm, RegisterForm } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -12,7 +12,7 @@ type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Prof
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { user, isLoggedIn, isLoading, error } = useSelector((state: RootState) => state.auth);
   const { colors } = useSelector((state: RootState) => state.theme);
   
@@ -28,12 +28,12 @@ const ProfileScreen: React.FC = () => {
 
   const handleLogin = () => {
     dispatch(clearError());
-    dispatch(mockLogin(loginForm) as any);
+    dispatch(firebaseLogin(loginForm));
   };
 
   const handleRegister = () => {
     dispatch(clearError());
-    dispatch(mockRegister(registerForm) as any);
+    dispatch(firebaseRegister(registerForm));
   };
 
   const handleLogout = () => {
@@ -42,7 +42,7 @@ const ProfileScreen: React.FC = () => {
       'Möchten Sie sich wirklich abmelden?',
       [
         { text: 'Abbrechen', style: 'cancel' },
-        { text: 'Abmelden', style: 'destructive', onPress: () => dispatch(logout()) },
+        { text: 'Abmelden', style: 'destructive', onPress: () => dispatch(firebaseLogout()) },
       ]
     );
   };

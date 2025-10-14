@@ -11,8 +11,8 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootState } from '../store';
-import { deleteEvent } from '../store/eventSlice';
+import { RootState, AppDispatch } from '../store';
+import { removeEvent } from '../store/eventSlice';
 import { RootStackParamList, ThemeColors } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPrice } from '../utils/currency';
@@ -23,7 +23,7 @@ type EventDetailScreenRouteProp = RouteProp<RootStackParamList, 'EventDetail'>;
 const EventDetailScreen: React.FC = () => {
   const navigation = useNavigation<EventDetailScreenNavigationProp>();
   const route = useRoute<EventDetailScreenRouteProp>();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { colors } = useSelector((state: RootState) => state.theme);
   const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
   
@@ -62,7 +62,7 @@ const EventDetailScreen: React.FC = () => {
           text: 'Löschen',
           style: 'destructive',
           onPress: () => {
-            dispatch(deleteEvent(eventId));
+            dispatch(removeEvent(eventId));
             navigation.goBack();
           },
         },

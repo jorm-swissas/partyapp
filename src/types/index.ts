@@ -22,6 +22,8 @@ export interface EventState {
   events: Event[];
   filteredEvents: Event[];
   selectedCategory: EventCategory | 'Alle';
+  isLoading: boolean;
+  error: string | null;
 }
 
 // User Management Types

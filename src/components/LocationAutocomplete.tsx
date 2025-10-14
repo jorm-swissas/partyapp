@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Alert,
+  TextInput,
+  Keyboard,
 } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+
+interface AddressSuggestion {
+  id: string;
+  description: string;
+  structured_formatting?: {
+    main_text: string;
+    secondary_text: string;
+  };
+}
 
 interface LocationAutocompleteProps {
   value: string;
@@ -26,6 +37,10 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   style,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Realistische Basel/Schweiz Adressen für Demo
   const generateMockSuggestions = (query: string): AddressSuggestion[] => {
