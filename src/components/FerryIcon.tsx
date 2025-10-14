@@ -1,29 +1,154 @@
 import React from 'react';
 import { View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect, Ellipse, Defs, LinearGradient, Stop } from 'react-native-svg';
 
-interface FerryIconProps {
+interface BridgeIconProps {
   width?: number;
   height?: number;
   color?: string;
 }
 
-const FerryIcon: React.FC<FerryIconProps> = ({ 
+const BridgeIcon: React.FC<BridgeIconProps> = ({ 
   width = 40, 
   height = 40, 
   color = '#2E86AB' 
 }) => {
   return (
-    <View style={{ width, height, marginTop: 3 }}>
-      <Svg width={width} height={height} viewBox="300 900 1500 400" preserveAspectRatio="xMidYMid meet">
-        <Path fill="rgb(51,149,156)" d="M 365.707 1072.4 C 365.57 1063.29 364.695 1053.22 366.373 1044.27 C 367.391 1038.83 369.384 1033.73 373.842 1030.27 C 385.374 1021.31 459.248 1003.96 476.262 999.617 C 484.016 997.639 496.944 995.929 503.606 991.537 C 513.958 984.713 517.482 966.33 532.781 956.544 C 542.581 950.276 553.6 950.021 564.851 949.436 C 600.638 947.572 636.918 949.348 672.766 949.518 L 850.575 949.551 L 925.368 949.453 C 933.971 949.366 965.06 948.23 971.62 949.758 L 971.993 950.864 C 975.523 951.273 976.661 951.641 980.125 950.637 L 980.075 949.766 C 988.365 948.232 1005.88 949.442 1015.09 949.99 C 1041.48 955.767 1045.79 975.075 1054.29 997.579 C 1032.42 997.838 1010.55 997.853 988.677 997.624 C 986.867 1006.48 985.344 1019.92 979.249 1025.61 C 975.724 1027.03 972.439 1026.24 968.747 1025.35 C 968.723 1036.02 967.832 1107.68 968.966 1110.05 L 970.795 1110.56 C 994.624 1111.18 1019.81 1110.36 1043.74 1110.14 C 1091.83 1110 1139.92 1109.39 1188 1108.28 C 1284.21 1106.88 1377.48 1106.55 1473.88 1102.07 C 1514.43 1100.47 1554.94 1097.83 1595.36 1094.17 C 1609.55 1092.88 1661.32 1086.96 1672.36 1087.79 C 1679.99 1086 1689.72 1085.4 1697.76 1083.89 C 1669.99 1132.82 1633.19 1157.15 1580.12 1177.63 C 1579.89 1177.69 1579.65 1177.75 1579.41 1177.81 C 1566.26 1182.32 1555.03 1185.73 1541.34 1188.45 L 1541.92 1189.54 C 1550.03 1190.48 1565.8 1190.02 1574.38 1190.01 L 1631.76 1189.99 L 1824.83 1190.04 L 1875.72 1189.91 C 1885.77 1189.89 1895.23 1189.68 1905.28 1190.62 C 1931.73 1193.1 1930.71 1227.47 1906.5 1231.22 C 1895.55 1232.84 1846.38 1231.9 1833.65 1231.88 L 1679.79 1231.89 C 1687.91 1238.75 1691.44 1243.76 1690.73 1254.83 C 1689.69 1271.17 1669.39 1273.87 1656.49 1273.8 C 1622.97 1273.61 1589.45 1273.71 1555.92 1273.74 L 1320.21 1273.74 L 669.569 1273.68 L 339.882 1273.65 L 244.736 1273.84 C 224.436 1273.9 201.671 1275.36 181.748 1271.38 C 171.352 1269.3 167.053 1259.76 168.745 1249.86 C 170.449 1239.88 174.259 1236.78 181.925 1231.07 C 168.55 1231.44 154.937 1231.5 141.552 1231.59 C 129.413 1231.68 113.654 1233.76 104.388 1224.42 C 100.582 1220.56 98.5203 1215.31 98.6825 1209.88 C 99.0485 1196.47 112.217 1193.36 122.922 1182.54 L 124.268 1181.17 C 139.69 1179.24 183.718 1180.3 200.803 1180.31 L 353.615 1180.41 C 362.652 1180.41 401.322 1181.3 406.412 1178.97 L 402.244 1164.84 C 399.934 1157.52 397.388 1145.62 396.636 1137.97 L 394.514 1120.73 C 393.215 1113.21 393.925 1085.03 394.017 1076.08 L 437.463 1076.23 C 449.258 1075.8 509.942 1077.37 516.405 1075.68 L 516.584 1073.57 C 514.15 1063.83 517.715 1032.77 514.731 1026.92 C 513.215 1027.04 512.468 1027.19 510.979 1027.53 C 472.784 1036.37 436.01 1051.49 398.343 1062.46 C 387.43 1065.64 376.362 1068.84 365.707 1072.4 z"/>
-        <Path fill="rgb(35,64,85)" d="M 787.616 1040.96 L 860.833 1041.03 C 860.927 1051.75 861.431 1064.52 860.734 1075.02 L 787.44 1074.99 L 787.616 1040.96 z"/>
-        <Path fill="rgb(35,64,85)" d="M 671.774 1040.87 L 718.937 1040.79 L 718.984 1074.98 L 671.888 1074.9 L 671.774 1040.87 z"/>
-        <Path fill="rgb(35,64,85)" d="M 729.797 1040.84 L 776.873 1040.74 L 776.649 1074.87 C 761.847 1075.32 744.709 1074.9 729.713 1074.91 C 729.574 1063.69 729.759 1052.08 729.797 1040.84 z"/>
-        <Path fill="rgb(93,185,220)" d="M 181.925 1231.07 C 222.61 1229.93 265.971 1230.81 306.849 1230.83 L 520.862 1230.71 L 1228.93 1230.68 L 1690.12 1230.89 L 1834.17 1230.9 C 1853.41 1230.9 1888.25 1229.86 1906.5 1231.22 C 1895.55 1232.84 1846.38 1231.9 1833.65 1231.88 L 1679.79 1231.89 C 1687.91 1238.75 1691.44 1243.76 1690.73 1254.83 C 1689.69 1271.17 1669.39 1273.87 1656.49 1273.8 C 1622.97 1273.61 1589.45 1273.71 1555.92 1273.74 L 1320.21 1273.74 L 669.569 1273.68 L 339.882 1273.65 L 244.736 1273.84 C 224.436 1273.9 201.671 1275.36 181.748 1271.38 C 171.352 1269.3 167.053 1259.76 168.745 1249.86 C 170.449 1239.88 174.259 1236.78 181.925 1231.07 z"/>
+    <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
+      <Svg width={width} height={height} viewBox="0 0 120 80" preserveAspectRatio="xMidYMid meet">
+        <Defs>
+          {/* Stone gradient for realistic bridge color */}
+          <LinearGradient id="stoneGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#E8DCC6" stopOpacity="1" />
+            <Stop offset="50%" stopColor="#D4C4A8" stopOpacity="1" />
+            <Stop offset="100%" stopColor="#C4B49C" stopOpacity="1" />
+          </LinearGradient>
+          
+          {/* Darker stone for shadows */}
+          <LinearGradient id="stoneShadow" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#B8A888" stopOpacity="1" />
+            <Stop offset="100%" stopColor="#A69680" stopOpacity="1" />
+          </LinearGradient>
+          
+          {/* Rhine blue */}
+          <LinearGradient id="rhineWater" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#4A90B8" stopOpacity="0.8" />
+            <Stop offset="100%" stopColor="#2E6B95" stopOpacity="0.9" />
+          </LinearGradient>
+        </Defs>
+        
+        {/* Rhine River */}
+        <Rect 
+          x="0" 
+          y="50" 
+          width="120" 
+          height="30" 
+          fill="url(#rhineWater)"
+        />
+        
+        {/* Bridge foundation blocks in water */}
+        <Rect x="15" y="45" width="12" height="25" fill="url(#stoneShadow)" rx="1"/>
+        <Rect x="32" y="42" width="14" height="28" fill="url(#stoneShadow)" rx="1"/>
+        <Rect x="52" y="40" width="16" height="30" fill="url(#stoneShadow)" rx="1"/>
+        <Rect x="74" y="42" width="14" height="28" fill="url(#stoneShadow)" rx="1"/>
+        <Rect x="93" y="45" width="12" height="25" fill="url(#stoneShadow)" rx="1"/>
+        
+        {/* Main bridge arches - more realistic curves */}
+        <Path 
+          d="M 5 45 Q 21 25 39 45" 
+          fill="none" 
+          stroke="url(#stoneGradient)" 
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+        <Path 
+          d="M 32 42 Q 46 22 60 42" 
+          fill="none" 
+          stroke="url(#stoneGradient)" 
+          strokeWidth="9"
+          strokeLinecap="round"
+        />
+        <Path 
+          d="M 52 40 Q 66 20 80 40" 
+          fill="none" 
+          stroke="url(#stoneGradient)" 
+          strokeWidth="9"
+          strokeLinecap="round"
+        />
+        <Path 
+          d="M 74 42 Q 88 22 102 42" 
+          fill="none" 
+          stroke="url(#stoneGradient)" 
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+        <Path 
+          d="M 93 45 Q 105 25 115 45" 
+          fill="none" 
+          stroke="url(#stoneGradient)" 
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+        
+        {/* Bridge deck/roadway */}
+        <Rect 
+          x="5" 
+          y="40" 
+          width="110" 
+          height="8" 
+          fill="url(#stoneGradient)"
+          rx="1"
+        />
+        
+        {/* Historic buildings on Kleinbasel side */}
+        <Rect x="5" y="25" width="8" height="15" fill="#D4C4A8" rx="1"/>
+        <Rect x="15" y="20" width="10" height="20" fill="#E8DCC6" rx="1"/>
+        <Rect x="27" y="18" width="6" height="22" fill="#D4C4A8" rx="1"/>
+        
+        {/* Historic buildings on Grossbasel side */}
+        <Rect x="85" y="18" width="6" height="22" fill="#D4C4A8" rx="1"/>
+        <Rect x="93" y="20" width="10" height="20" fill="#E8DCC6" rx="1"/>
+        <Rect x="105" y="25" width="8" height="15" fill="#D4C4A8" rx="1"/>
+        
+        {/* Bridge chapel/tower in center */}
+        <Rect 
+          x="56" 
+          y="15" 
+          width="8" 
+          height="25" 
+          fill="url(#stoneGradient)"
+          rx="1"
+        />
+        
+        {/* Chapel roof */}
+        <Path 
+          d="M 54 15 L 60 8 L 66 15 Z" 
+          fill="#A69680"
+        />
+        
+        {/* Stone texture details */}
+        <Rect x="20" y="43" width="2" height="1" fill="#B8A888" opacity="0.6"/>
+        <Rect x="35" y="40" width="2" height="1" fill="#B8A888" opacity="0.6"/>
+        <Rect x="55" y="38" width="2" height="1" fill="#B8A888" opacity="0.6"/>
+        <Rect x="75" y="40" width="2" height="1" fill="#B8A888" opacity="0.6"/>
+        <Rect x="90" y="43" width="2" height="1" fill="#B8A888" opacity="0.6"/>
+        
+        {/* Water reflections */}
+        <Ellipse cx="25" cy="58" rx="8" ry="2" fill="#ffffff" opacity="0.2"/>
+        <Ellipse cx="60" cy="60" rx="12" ry="3" fill="#ffffff" opacity="0.15"/>
+        <Ellipse cx="90" cy="58" rx="8" ry="2" fill="#ffffff" opacity="0.2"/>
+        
+        {/* Water movement */}
+        <Path 
+          d="M 0 65 Q 15 62 30 65 Q 45 68 60 65 Q 75 62 90 65 Q 105 68 120 65" 
+          fill="none" 
+          stroke="#ffffff" 
+          strokeWidth="1" 
+          opacity="0.3"
+        />
       </Svg>
     </View>
   );
 };
 
-export default FerryIcon;
+export default BridgeIcon;

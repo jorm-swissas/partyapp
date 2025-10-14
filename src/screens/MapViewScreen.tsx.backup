@@ -1,0 +1,303 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  Dimensions,
+  FlatList,
+} from 'react-native';
+import { useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import MapView, { Marker, Region } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
+import { RootState } from '../store';
+import { RootStackParamList, Event } from '../types';
+import { formatPrice } from '../utils/currency';
+
+type MapViewScreenNavigationProp = StackNavigationProp<RootStackParamList, 'MapView'>;
+
+const { width, height } = Dimensions.get('window');
+
+const MapViewScreen: React.FC = () => {
+  const navigation = useNavigation<MapViewScreenNavigationProp>();
+  const { user, isLoggedIn } = useSelector((state: RootState) => state.auth);
+  const { colors } = useSelector((state: RootState) => state.theme);
+  const { events } = useSelector((state: RootState) => state.events);
+  const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
+
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [region, setRegion] = useState<Region>({
+    latitude: 47.5596, // Basel Koordinaten als Standard
+    longitude: 7.5886,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+
+  // Check if user is logged in
+  useEffect(() => {
+    if (!isLoggedIn) {
+      Alert.alert(
+        'Anmeldung erforderlich',
+        'Um die Karte zu nutzen, musst du angemeldet sein. Du siehst eine verschwommene Vorschau.',
+        [
+          { text: 'Zur Anmeldung', onPress: () => navigation.navigate('Profile') },
+          { text: 'Vorschau ansehen', style: 'cancel' }
+        ]
+      );
+    }
+  }, [isLoggedIn, navigation]);
+
+  // Request location permission and get current location
+  useEffect(() => {
+    if (isLoggedIn) {
+      requestLocationPermission();
+    }
+  }, [isLoggedIn]);
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status === 'granted') {
+        setHasLocationPermission(true);
+        const currentLocation = await Location.getCurrentPositionAsync({});
+        setLocation(currentLocation);
+      } else {
+        Alert.alert(
+          'Standort-Berechtigung',
+          'Um Events in deiner Nähe zu finden, benötigen wir Zugriff auf deinen Standort.',
+          [
+            { text: 'Erneut versuchen', onPress: requestLocationPermission },
+            { text: 'Ohne Standort fortfahren', style: 'cancel' }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+    }
+  };
+
+  const handleEventPress = (event: Event) => {
+    navigation.navigate('EventDetail', { eventId: event.id });
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius der Erde in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Filter events that have coordinates
+  const eventsWithLocation = events.filter(event => 
+    event.latitude !== undefined && event.longitude !== undefined
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Events in der Nähe
+        </Text>
+        {isLoggedIn && hasLocationPermission && (
+          <TouchableOpacity 
+            style={styles.locationButton}
+            onPress={centerOnUserLocation}
+          >
+            <Ionicons name="locate" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Map */}
+      <View style={styles.mapContainer}>
+        <MapView
+          style={styles.map}
+          region={region}
+          onRegionChangeComplete={setRegion}
+          showsUserLocation={isLoggedIn && hasLocationPermission}
+          showsMyLocationButton={false}
+          provider="google"
+        >
+          {isLoggedIn && eventsWithLocation.map((event) => (
+            <Marker
+              key={event.id}
+              coordinate={{
+                latitude: event.latitude!,
+                longitude: event.longitude!,
+              }}
+              onPress={() => handleMarkerPress(event)}
+            >
+              <View style={[styles.markerContainer, { backgroundColor: colors.primary }]}>
+                <Ionicons name="calendar" size={16} color={colors.primaryText} />
+              </View>
+            </Marker>
+          ))}
+        </MapView>
+
+        {/* Blur overlay for non-logged-in users */}
+        {!isLoggedIn && (
+          <View style={styles.blurOverlay}>
+            <View style={[styles.loginPrompt, { backgroundColor: colors.surface }]}>
+              <Ionicons name="lock-closed" size={48} color={colors.primary} />
+              <Text style={[styles.loginPromptTitle, { color: colors.text }]}>
+                Melde dich an
+              </Text>
+              <Text style={[styles.loginPromptText, { color: colors.textSecondary }]}>
+                Um Events in deiner Nähe zu sehen und die Karte vollständig zu nutzen
+              </Text>
+              <TouchableOpacity 
+                style={[styles.loginButton, { backgroundColor: colors.primary }]}
+                onPress={() => navigation.navigate('Profile')}
+              >
+                <Text style={[styles.loginButtonText, { color: colors.primaryText }]}>
+                  Jetzt anmelden
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Event count indicator */}
+      {isLoggedIn && (
+        <View style={[styles.eventCounter, { backgroundColor: colors.surface }]}>
+          <Ionicons name="calendar" size={16} color={colors.primary} />
+          <Text style={[styles.eventCountText, { color: colors.text }]}>
+            {eventsWithLocation.length} Events auf der Karte
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  backButton: {
+    width: 40,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  locationButton: {
+    width: 40,
+    alignItems: 'flex-end',
+  },
+  mapContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  markerContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  blurOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loginPrompt: {
+    padding: 30,
+    borderRadius: 20,
+    alignItems: 'center',
+    marginHorizontal: 40,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+  },
+  loginPromptTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  loginPromptText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  loginButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  eventCounter: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 25,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  eventCountText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+});
+
+export default MapViewScreen;

@@ -7,7 +7,7 @@ import { RootState } from '../store';
 import { setSelectedCategory, initializeFilters } from '../store/eventSlice';
 import { Event, EventCategory, RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
-import FerryIcon from '../components/FerryIcon';
+import { formatPrice } from '../utils/currency';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -17,6 +17,7 @@ const HomeScreen: React.FC = () => {
   const { filteredEvents, selectedCategory } = useSelector((state: RootState) => state.events);
   const { user, isLoggedIn } = useSelector((state: RootState) => state.auth);
   const { colors } = useSelector((state: RootState) => state.theme);
+  const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
 
   const categories: (EventCategory | 'Alle')[] = ['Alle', 'Hausparty', 'Party', 'Gaming', 'Outdoor'];
 
@@ -69,7 +70,7 @@ const HomeScreen: React.FC = () => {
         </View>
         {item.price && (
           <View style={styles.priceContainer}>
-            <Text style={styles.priceText}>{item.price}€</Text>
+            <Text style={styles.priceText}>{formatPrice(item.price, item.currency || selectedCurrency, currencies)}</Text>
           </View>
         )}
       </View>
@@ -82,9 +83,14 @@ const HomeScreen: React.FC = () => {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.text }}>RhyConnect</Text>
-          <FerryIcon width={36} height={36} color={colors.primary} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity 
+            style={{ backgroundColor: colors.card, width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' }} 
+            onPress={() => navigation.navigate('MapView')}
+          >
+            <Ionicons name="map-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
           <TouchableOpacity 
             style={{ backgroundColor: isLoggedIn ? colors.card : colors.primary, width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' }} 
             onPress={() => navigation.navigate('Profile')}
@@ -139,7 +145,7 @@ const HomeScreen: React.FC = () => {
               <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>{item.title || 'Untitled Event'}</Text>
               <Text style={{ color: colors.textSecondary, fontSize: 14 }}>{formatDate(item.date)} - {item.time || 'Keine Zeit angegeben'}</Text>
               <Text style={{ color: colors.textSecondary, fontSize: 14 }}>{item.location || 'Kein Ort angegeben'}</Text>
-              {item.price ? <Text style={{ color: colors.primary, fontSize: 18, fontWeight: 'bold', textAlign: 'right' }}>{item.price}€</Text> : null}
+              {item.price ? <Text style={{ color: colors.primary, fontSize: 18, fontWeight: 'bold', textAlign: 'right' }}>{formatPrice(item.price, item.currency || selectedCurrency, currencies)}</Text> : null}
             </View>
           </TouchableOpacity>
         ))}

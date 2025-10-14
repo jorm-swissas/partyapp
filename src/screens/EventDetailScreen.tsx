@@ -15,6 +15,7 @@ import { RootState } from '../store';
 import { deleteEvent } from '../store/eventSlice';
 import { RootStackParamList, ThemeColors } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { formatPrice } from '../utils/currency';
 
 type EventDetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'EventDetail'>;
 type EventDetailScreenRouteProp = RouteProp<RootStackParamList, 'EventDetail'>;
@@ -24,6 +25,7 @@ const EventDetailScreen: React.FC = () => {
   const route = useRoute<EventDetailScreenRouteProp>();
   const dispatch = useDispatch();
   const { colors } = useSelector((state: RootState) => state.theme);
+  const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
   
   const { eventId } = route.params;
   const event = useSelector((state: RootState) => 
@@ -157,7 +159,7 @@ const EventDetailScreen: React.FC = () => {
                 </View>
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Preis</Text>
-                  <Text style={styles.detailValue}>{event.price}€</Text>
+                  <Text style={styles.detailValue}>{formatPrice(event.price, event.currency || selectedCurrency, currencies)}</Text>
                 </View>
               </View>
             )}

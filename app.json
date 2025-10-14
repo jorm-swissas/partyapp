@@ -13,7 +13,14 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Diese App benötigt Zugriff auf deinen Standort, um Events in deiner Nähe zu finden.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Diese App benötigt Zugriff auf deinen Standort, um Events in deiner Nähe zu finden."
+      },
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +28,36 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.rhyconnect.PartyAppNew",
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUseUsageDescription": "Diese App benötigt Zugriff auf deinen Standort, um Events in deiner Nähe zu finden."
+        }
+      ],
+      "expo-dev-client"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "eed30f3e-45ea-4def-976d-4a15143faa9f"
+      }
     }
   }
 }

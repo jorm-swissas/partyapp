@@ -17,8 +17,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { addEvent } from '../store/eventSlice';
-import { EventCategory, RootStackParamList, ThemeColors } from '../types';
+import { EventCategory, RootStackParamList, ThemeColors, Currency } from '../types';
 import { RootState } from '../store';
+import { formatPrice } from '../utils/currency';
+import * as Location from 'expo-location';
+import LocationAutocompleteFree from '../components/LocationAutocompleteFree';
 
 type CreateEventScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CreateEvent'>;
 
@@ -27,6 +30,7 @@ const CreateEventScreen: React.FC = () => {
   const dispatch = useDispatch();
   const { user, isLoggedIn } = useSelector((state: RootState) => state.auth);
   const { colors } = useSelector((state: RootState) => state.theme);
+  const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
 
   // Kein useEffect Auth Guard mehr - der Check passiert beim Submit
 
@@ -38,7 +42,10 @@ const CreateEventScreen: React.FC = () => {
   const [category, setCategory] = useState<EventCategory>('Hausparty');
   const [maxParticipants, setMaxParticipants] = useState('');
   const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState<Currency>(selectedCurrency);
   const [imageUri, setImageUri] = useState<string | undefined>();
+  const [latitude, setLatitude] = useState<number | undefined>();
+  const [longitude, setLongitude] = useState<number | undefined>();
   
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -72,12 +79,15 @@ const CreateEventScreen: React.FC = () => {
       title: title.trim(),
       description: description.trim(),
       location: location.trim(),
+      latitude,
+      longitude,
       date: date.toISOString().split('T')[0],
       time: time.toTimeString().slice(0, 5),
       category,
       imageUri,
       maxParticipants: maxParticipants ? parseInt(maxParticipants) : undefined,
       price: price ? parseFloat(price) : undefined,
+      currency,
       createdBy: user.id, // Event mit User verknüpfen
     };
 
@@ -175,19 +185,22 @@ const CreateEventScreen: React.FC = () => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Ort *</Text>
-            <TextInput
-              style={styles.input}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="z.B. Bei mir zu Hause, WG Zimmer 5, Garten"
-              placeholderTextColor={colors.placeholder}
-              autoComplete="off"
-              autoCorrect={false}
-              autoCapitalize="none"
-            />
-          </View>
+          <LocationAutocompleteFree
+            value={location}
+            onLocationSelect={(address: string, lat?: number, lng?: number) => {
+              setLocation(address);
+              setLatitude(lat);
+              setLongitude(lng);
+            }}
+            placeholder="z.B. Marktplatz Basel, Rheingasse, Universität..."
+            colors={colors}
+            style={{ marginBottom: 0 }}
+          />
+          {latitude && longitude && (
+            <Text style={[styles.coordinatesText, { color: colors.textSecondary, marginTop: 8, marginBottom: 16 }]}>
+              📍 Koordinaten gesetzt ({latitude.toFixed(4)}, {longitude.toFixed(4)})
+            </Text>
+          )}
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
@@ -256,17 +269,38 @@ const CreateEventScreen: React.FC = () => {
             </View>
 
             <View style={[styles.inputGroup, { flex: 1, marginLeft: 10 }]}>
-              <Text style={styles.label}>Preis (€)</Text>
-              <TextInput
-                style={styles.input}
-                value={price}
-                onChangeText={setPrice}
-                placeholder="Optional"
-                placeholderTextColor={colors.placeholder}
-                keyboardType="decimal-pad"
-                autoComplete="off"
-                autoCorrect={false}
-              />
+              <Text style={styles.label}>Preis</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginRight: 8 }]}
+                  value={price}
+                  onChangeText={setPrice}
+                  placeholder="Optional"
+                  placeholderTextColor={colors.placeholder}
+                  keyboardType="decimal-pad"
+                  autoComplete="off"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity 
+                  style={[styles.currencyButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => {
+                    Alert.alert(
+                      'Währung wählen',
+                      '',
+                      [
+                        ...currencies.map(curr => ({
+                          text: `${curr.symbol} ${curr.name}`,
+                          onPress: () => setCurrency(curr.code)
+                        })),
+                        { text: 'Abbrechen', style: 'cancel' as const }
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={[styles.currencyText, { color: colors.text }]}>{currency}</Text>
+                  <Ionicons name="chevron-down" size={16} color={colors.text} />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -452,6 +486,29 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  currencyButton: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minWidth: 70,
+  },
+  currencyText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  coordinatesText: {
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });
 

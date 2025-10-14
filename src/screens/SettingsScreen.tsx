@@ -5,7 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootState } from '../store';
 import { setThemeMode } from '../store/themeSlice';
-import { RootStackParamList, ThemeMode } from '../types';
+import { setCurrency } from '../store/currencySlice';
+import { RootStackParamList, ThemeMode, Currency } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
@@ -14,6 +15,7 @@ const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const dispatch = useDispatch();
   const { colors, mode } = useSelector((state: RootState) => state.theme);
+  const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
   const { user } = useSelector((state: RootState) => state.auth);
 
   const themeOptions: { mode: ThemeMode; label: string; icon: string }[] = [

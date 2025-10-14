@@ -8,6 +8,7 @@ import CreateEventScreen from '../screens/CreateEventScreen';
 import EventDetailScreen from '../screens/EventDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import MapViewSimpleScreen from '../screens/MapViewSimpleScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -97,6 +98,27 @@ export default function AppNavigator() {
           component={SettingsScreen}
           options={{
             title: 'Einstellungen',
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+              };
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="MapView" 
+          component={MapViewSimpleScreen}
+          options={{
+            title: 'Karte',
             cardStyleInterpolator: ({ current, layouts }) => {
               return {
                 cardStyle: {

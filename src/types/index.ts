@@ -3,12 +3,15 @@ export interface Event {
   title: string;
   description: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   date: string;
   time: string;
   category: EventCategory;
   imageUri?: string;
   maxParticipants?: number;
   price?: number;
+  currency?: Currency;
   createdAt: string;
   createdBy?: string; // User ID des Erstellers
 }
@@ -56,6 +59,7 @@ export type RootStackParamList = {
   EventDetail: { eventId: string };
   Profile: undefined;
   Settings: undefined;
+  MapView: undefined;
 };
 
 // Theme System Types
@@ -79,4 +83,19 @@ export interface ThemeState {
   mode: ThemeMode;
   isDark: boolean;
   colors: ThemeColors;
+}
+
+// Currency System Types
+export type Currency = 'CHF' | 'EUR' | 'GBP' | 'USD' | 'SEK' | 'NOK' | 'DKK' | 'PLN' | 'CZK';
+
+export interface CurrencyInfo {
+  code: Currency;
+  symbol: string;
+  name: string;
+  country: string;
+}
+
+export interface CurrencyState {
+  selectedCurrency: Currency;
+  currencies: CurrencyInfo[];
 }
