@@ -23,6 +23,7 @@
       }
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -40,7 +41,8 @@
         "googleMaps": {
           "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
         }
-      }
+      },
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.rhyconnect.PartyAppNew"
     },
     "web": {
       "favicon": "./assets/favicon.png"
