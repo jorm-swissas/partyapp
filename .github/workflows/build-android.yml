@@ -1,4 +1,4 @@
-name: Build Flutter AAB & APK (Optimized)
+name: Build Expo Android AAB
 
 on:
   push:
@@ -8,53 +8,31 @@ on:
 
 jobs:
   build:
-    name: Build Release Artifacts
+    name: Build Expo Android AAB
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          path: |
-            ~/.pub-cache
-            ~/.gradle
-            ${{ env.HOME }}/.flutter
-          key: ${{ runner.os }}-flutter-${{ hashFiles('pubspec.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
+          node-version: 20
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Authenticate with Expo
+        uses: expo/expo-github-action@v8
         with:
-          channel: stable
-          cache: true
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Read version from pubspec.yaml
-        id: version
-        run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build AppBundle (.aab)
-        run: flutter build appbundle --release
+      - name: Run EAS Build (Android AAB)
+        run: eas build --platform android --profile production --non-interactive
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: travelmate-v${{ steps.version.outputs.version }}-appbundle
-          path: build/app/outputs/bundle/release/app-release.aab
-
-      - name: Build APK (.apk)
-        run: flutter build apk --release
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: travelmate-v${{ steps.version.outputs.version }}-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: partyapp-android-aab
+          path: dist/*.aab
