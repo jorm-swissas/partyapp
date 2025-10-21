@@ -1,37 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
   Alert,
-  ScrollView,
   Text,
   TouchableOpacity,
-  Linking,
   Dimensions,
   SafeAreaView,
+  Image,
+  Platform,
+  Linking,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useSelector } from 'react-redux';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, StackNavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootState } from '../store';
-import { Event } from '../types';
-import { lightTheme } from '../theme/colors';
+import { Event, RootStackParamList } from '../types';
 import { formatPrice } from '../utils/currency';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const ASPECT_RATIO = width / height;
+const LATITUDE_DELTA = 0.05;
+const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+
+type MapViewNavigationProp = StackNavigationProp<RootStackParamList, 'MapView'>;
 
 export default function MapViewSimpleScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigation = useNavigation();
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [region, setRegion] = useState<Region | null>(null);
+
+  const mapRef = useRef<MapView>(null);
+  const navigation = useNavigation<MapViewNavigationProp>();
   const events = useSelector((state: RootState) => state.events.events);
-  const currency = useSelector((state: RootState) => state.currency.selectedCurrency);
-  const currencyState = useSelector((state: RootState) => state.currency);
+  const { selectedCurrency, currencies } = useSelector((state: RootState) => state.currency);
   const { colors } = useSelector((state: RootState) => state.theme);
-  
+  const styles = createStyles(colors);
+
   // Filter events with coordinates
-  const eventsWithLocation = events.filter(event => 
+  const eventsWithLocation = events.filter(event =>
     event.latitude !== undefined && event.longitude !== undefined
   );
 
@@ -39,11 +49,25 @@ export default function MapViewSimpleScreen() {
     getCurrentLocation();
   }, []);
 
+  useEffect(() => {
+    // Set initial region based on events or user location
+    if (eventsWithLocation.length > 0 && !region) {
+      fitMapToEvents();
+    } else if (location && !region) {
+      setRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: LATITUDE_DELTA,
+        longitudeDelta: LONGITUDE_DELTA,
+      });
+    }
+  }, [eventsWithLocation, location]);
+
   const getCurrentLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Berechtigung verweigert', 'Standortzugriff ist erforderlich für die Kartenansicht.');
+        // Still show map, just without user location
         setLoading(false);
         return;
       }
@@ -53,292 +77,457 @@ export default function MapViewSimpleScreen() {
       setLoading(false);
     } catch (error) {
       console.error('Fehler beim Abrufen der Position:', error);
-      Alert.alert('Fehler', 'Standort konnte nicht abgerufen werden.');
       setLoading(false);
     }
   };
 
-  const openInMaps = (latitude: number, longitude: number, title: string) => {
-    const url = `https://maps.google.com/maps?q=${latitude},${longitude}&z=15&t=m`;
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Fehler', 'Karten-App konnte nicht geöffnet werden.');
-    });
-  };
-
-  const openAllEventsInMaps = () => {
+  const fitMapToEvents = () => {
     if (eventsWithLocation.length === 0) return;
-    
-    const coordinates = eventsWithLocation.map(event => 
-      `${event.latitude},${event.longitude}`
-    ).join('|');
-    
-    const url = `https://maps.google.com/maps?q=${coordinates}`;
-    Linking.openURL(url).catch(() => {
+
+    if (eventsWithLocation.length === 1) {
+      const event = eventsWithLocation[0];
+      setRegion({
+        latitude: event.latitude!,
+        longitude: event.longitude!,
+        latitudeDelta: LATITUDE_DELTA,
+        longitudeDelta: LONGITUDE_DELTA,
+      });
+      return;
+    }
+
+    // Calculate bounding box for all events
+    const latitudes = eventsWithLocation.map(e => e.latitude!);
+    const longitudes = eventsWithLocation.map(e => e.longitude!);
+
+    const minLat = Math.min(...latitudes);
+    const maxLat = Math.max(...latitudes);
+    const minLng = Math.min(...longitudes);
+    const maxLng = Math.max(...longitudes);
+
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+    const latDelta = (maxLat - minLat) * 1.5; // Add padding
+    const lngDelta = (maxLng - minLng) * 1.5;
+
+    setRegion({
+      latitude: centerLat,
+      longitude: centerLng,
+      latitudeDelta: Math.max(latDelta, 0.01),
+      longitudeDelta: Math.max(lngDelta, 0.01),
+    });
+  };
+
+  const handleMarkerPress = (event: Event) => {
+    setSelectedEvent(event);
+  };
+
+  const handleEventCardPress = (event: Event) => {
+    navigation.navigate('EventDetail', { eventId: event.id });
+  };
+
+  const openDirections = async (event: Event) => {
+    const latitude = event.latitude!;
+    const longitude = event.longitude!;
+    const label = encodeURIComponent(event.title);
+
+    // Priority order: Google Maps → Apple Maps (iOS) → Waze → Browser
+
+    // 1. Try Google Maps first (works on both iOS and Android)
+    const googleMapsUrl = Platform.OS === 'ios'
+      ? `comgooglemaps://?daddr=${latitude},${longitude}&directionsmode=driving`
+      : `google.navigation:q=${latitude},${longitude}`;
+
+    try {
+      const googleMapsSupported = await Linking.canOpenURL(googleMapsUrl);
+      if (googleMapsSupported) {
+        await Linking.openURL(googleMapsUrl);
+        return;
+      }
+    } catch (err) {
+      console.log('Google Maps not available, trying Apple Maps...');
+    }
+
+    // 2. Try Apple Maps (iOS only)
+    if (Platform.OS === 'ios') {
+      const appleMapsUrl = `maps:0,0?q=${label}@${latitude},${longitude}`;
+      try {
+        const appleMapsSupported = await Linking.canOpenURL(appleMapsUrl);
+        if (appleMapsSupported) {
+          await Linking.openURL(appleMapsUrl);
+          return;
+        }
+      } catch (err) {
+        console.log('Apple Maps not available, trying Waze...');
+      }
+
+      // 3. Try Waze (iOS)
+      const wazeUrl = `waze://?ll=${latitude},${longitude}&navigate=yes`;
+      try {
+        const wazeSupported = await Linking.canOpenURL(wazeUrl);
+        if (wazeSupported) {
+          await Linking.openURL(wazeUrl);
+          return;
+        }
+      } catch (err) {
+        console.log('Waze not available, opening browser...');
+      }
+    } else {
+      // Android: Try default maps app
+      const geoUrl = `geo:0,0?q=${latitude},${longitude}(${label})`;
+      try {
+        await Linking.openURL(geoUrl);
+        return;
+      } catch (err) {
+        console.log('Default maps not available, opening browser...');
+      }
+    }
+
+    // 4. Last resort - open browser-based Google Maps
+    const browserUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    Linking.openURL(browserUrl).catch(() => {
       Alert.alert('Fehler', 'Karten-App konnte nicht geöffnet werden.');
     });
   };
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Radius der Erde in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  const renderEventCard = (event: Event) => {
-    const price = formatPrice(event.price || 0, currency, currencyState.currencies);
-    const distance = location ? 
-      calculateDistance(
-        location.coords.latitude, 
-        location.coords.longitude, 
-        event.latitude!, 
-        event.longitude!
-      ).toFixed(1) 
-      : null;
-
-    return (
-      <TouchableOpacity
-        key={event.id}
-        style={styles.eventCard}
-        onPress={() => openInMaps(event.latitude!, event.longitude!, event.title)}
-      >
-        <View style={styles.eventHeader}>
-          <Text style={styles.eventTitle}>{event.title}</Text>
-          {distance && (
-            <Text style={styles.distance}>{distance} km</Text>
-          )}
-        </View>
-        
-        <Text style={styles.eventDate}>
-          {new Date(event.date).toLocaleDateString('de-CH')}
-        </Text>
-        
-        <Text style={styles.eventLocation} numberOfLines={2}>
-          📍 {event.location}
-        </Text>
-        
-        <View style={styles.eventFooter}>
-          <Text style={styles.eventPrice}>{price}</Text>
-          <Text style={styles.mapHint}>🗺️ Antippen für Karte</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  if (loading) {
+  if (loading || !region) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Lade Standortdaten...</Text>
+        <Text style={styles.loadingText}>Lade Karte...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.card }]}>
-        <View style={styles.headerContent}>
+    <View style={styles.container}>
+      {/* Map */}
+      <MapView
+        ref={mapRef}
+        provider={PROVIDER_GOOGLE}
+        style={styles.map}
+        initialRegion={region}
+        showsUserLocation={!!location}
+        showsMyLocationButton={true}
+      >
+        {/* Event Markers */}
+        {eventsWithLocation.map((event) => (
+          <Marker
+            key={event.id}
+            coordinate={{
+              latitude: event.latitude!,
+              longitude: event.longitude!,
+            }}
+            onPress={() => handleMarkerPress(event)}
+            pinColor={selectedEvent?.id === event.id ? '#2E86AB' : '#FF6B6B'}
+          >
+            <View style={styles.markerContainer}>
+              <View style={[
+                styles.marker,
+                selectedEvent?.id === event.id && styles.markerSelected
+              ]}>
+                <Ionicons
+                  name="location"
+                  size={28}
+                  color={selectedEvent?.id === event.id ? '#2E86AB' : '#FF6B6B'}
+                />
+              </View>
+            </View>
+          </Marker>
+        ))}
+      </MapView>
+
+      {/* Header */}
+      <SafeAreaView style={styles.headerContainer}>
+        <View style={[styles.header, { backgroundColor: colors.card }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>Events Karte</Text>
             <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-              {eventsWithLocation.length} Events mit Standort
+              {eventsWithLocation.length} {eventsWithLocation.length === 1 ? 'Event' : 'Events'}
             </Text>
-            
-            {location && (
-              <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-                📍 Dein Standort: {location.coords.latitude.toFixed(4)}, {location.coords.longitude.toFixed(4)}
-              </Text>
-            )}
           </View>
+          <TouchableOpacity style={styles.recenterButton} onPress={fitMapToEvents}>
+            <Ionicons name="locate" size={24} color={colors.text} />
+          </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
 
-      {eventsWithLocation.length > 0 && (
-        <TouchableOpacity 
-          style={styles.viewAllButton}
-          onPress={openAllEventsInMaps}
-        >
-          <Text style={styles.viewAllButtonText}>
-            🗺️ Alle Events in Karten-App anzeigen
-          </Text>
-        </TouchableOpacity>
+      {/* Selected Event Card */}
+      {selectedEvent && (
+        <View style={[styles.eventCardContainer, { backgroundColor: colors.card }]}>
+          <TouchableOpacity
+            style={styles.eventCard}
+            onPress={() => handleEventCardPress(selectedEvent)}
+          >
+            {selectedEvent.imageUri && (
+              <Image source={{ uri: selectedEvent.imageUri }} style={styles.eventImage} />
+            )}
+            <View style={styles.eventDetails}>
+              <View style={styles.eventHeader}>
+                <Text style={[styles.eventTitle, { color: colors.text }]} numberOfLines={1}>
+                  {selectedEvent.title}
+                </Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setSelectedEvent(null)}
+                >
+                  <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.eventInfo}>
+                <View style={styles.eventInfoRow}>
+                  <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.eventInfoText, { color: colors.textSecondary }]}>
+                    {new Date(selectedEvent.date).toLocaleDateString('de-DE')} • {selectedEvent.time}
+                  </Text>
+                </View>
+
+                <View style={styles.eventInfoRow}>
+                  <Ionicons name="location-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.eventInfoText, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {selectedEvent.location}
+                  </Text>
+                </View>
+
+                {selectedEvent.price && (
+                  <View style={styles.eventInfoRow}>
+                    <Ionicons name="cash-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.eventPrice, { color: colors.primary }]}>
+                      {formatPrice(selectedEvent.price, selectedEvent.currency || selectedCurrency, currencies)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.directionsButton, { borderColor: colors.primary }]}
+                  onPress={() => openDirections(selectedEvent)}
+                >
+                  <Ionicons name="navigate" size={18} color={colors.primary} />
+                  <Text style={[styles.directionsButtonText, { color: colors.primary }]}>
+                    Route
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.detailsButton, { backgroundColor: colors.primary }]}
+                  onPress={() => handleEventCardPress(selectedEvent)}
+                >
+                  <Text style={styles.detailsButtonText}>Details</Text>
+                  <Ionicons name="arrow-forward" size={16} color="white" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
       )}
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {eventsWithLocation.length > 0 ? (
-          eventsWithLocation
-            .sort((a, b) => {
-              if (!location) return 0;
-              const distanceA = calculateDistance(
-                location.coords.latitude, location.coords.longitude, a.latitude!, a.longitude!
-              );
-              const distanceB = calculateDistance(
-                location.coords.latitude, location.coords.longitude, b.latitude!, b.longitude!
-              );
-              return distanceA - distanceB;
-            })
-            .map(renderEventCard)
-        ) : (
-          <View style={styles.noEventsContainer}>
-            <Text style={styles.noEventsText}>
-              Keine Events mit Standortdaten vorhanden.
-            </Text>
-            <Text style={styles.noEventsSubtext}>
-              Erstelle Events mit Adressen, um sie hier zu sehen.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+      {/* No Events Message */}
+      {eventsWithLocation.length === 0 && (
+        <View style={[styles.noEventsOverlay, { backgroundColor: colors.card }]}>
+          <Ionicons name="map-outline" size={48} color={colors.textSecondary} />
+          <Text style={[styles.noEventsText, { color: colors.text }]}>
+            Keine Events mit Standort
+          </Text>
+          <Text style={[styles.noEventsSubtext, { color: colors.textSecondary }]}>
+            Erstelle Events mit Adressen, um sie auf der Karte zu sehen
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: lightTheme.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: lightTheme.background,
+    backgroundColor: colors.background,
   },
   loadingText: {
     fontSize: 18,
-    color: lightTheme.text,
+    color: colors.text,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
   header: {
-    backgroundColor: lightTheme.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    paddingTop: 50,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 8,
-  },
-  locationText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  viewAllButton: {
-    backgroundColor: lightTheme.primary,
-    marginHorizontal: 20,
-    marginVertical: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  viewAllButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  eventCard: {
-    backgroundColor: lightTheme.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  recenterButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    marginLeft: 8,
+  },
+  markerContainer: {
+    alignItems: 'center',
+  },
+  marker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerSelected: {
+    transform: [{ scale: 1.2 }],
+  },
+  eventCardContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    maxHeight: height * 0.4,
+  },
+  eventCard: {
+    padding: 16,
+  },
+  eventImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  eventDetails: {
+    gap: 12,
   },
   eventHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
   },
   eventTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: lightTheme.text,
     flex: 1,
-    marginRight: 12,
   },
-  distance: {
-    fontSize: 14,
-    color: lightTheme.primary,
-    fontWeight: '600',
+  closeButton: {
+    padding: 4,
   },
-  eventDate: {
-    fontSize: 14,
-    color: lightTheme.textSecondary,
-    marginBottom: 8,
+  eventInfo: {
+    gap: 8,
   },
-  eventLocation: {
-    fontSize: 14,
-    color: lightTheme.textSecondary,
-    marginBottom: 12,
-  },
-  eventFooter: {
+  eventInfoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
+  },
+  eventInfoText: {
+    fontSize: 14,
+    flex: 1,
   },
   eventPrice: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: lightTheme.primary,
+    fontWeight: '600',
   },
-  mapHint: {
-    fontSize: 12,
-    color: lightTheme.textSecondary,
-    fontStyle: 'italic',
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
   },
-  noEventsContainer: {
+  directionsButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 40,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    backgroundColor: 'white',
+  },
+  directionsButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  detailsButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  detailsButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  noEventsOverlay: {
+    position: 'absolute',
+    top: '40%',
+    left: 20,
+    right: 20,
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   noEventsText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: lightTheme.text,
-    textAlign: 'center',
+    marginTop: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
   noEventsSubtext: {
     fontSize: 14,
-    color: lightTheme.textSecondary,
     textAlign: 'center',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  headerTextContainer: {
-    flex: 1,
   },
 });

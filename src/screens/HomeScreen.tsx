@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootState, AppDispatch } from '../store';
-import { setSelectedCategory, initializeFilters, fetchEvents } from '../store/eventSlice';
+import { setSelectedCategory, initializeFilters, fetchEvents, subscribeToEventsRealtime } from '../store/eventSlice';
 import { Event, EventCategory, RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPrice } from '../utils/currency';
@@ -22,9 +22,19 @@ const HomeScreen: React.FC = () => {
   const categories: (EventCategory | 'Alle')[] = ['Alle', 'Hausparty', 'Party', 'Gaming', 'Outdoor'];
 
   useEffect(() => {
-    dispatch(fetchEvents());
+    // Subscribe to real-time event updates
+    const subscription = dispatch(subscribeToEventsRealtime());
     dispatch(initializeFilters());
     dispatch(setSelectedCategory('Alle'));
+
+    // Cleanup: unsubscribe when component unmounts
+    return () => {
+      subscription.then((result: any) => {
+        if (result.payload && typeof result.payload === 'function') {
+          result.payload(); // Call unsubscribe function
+        }
+      });
+    };
   }, [dispatch]);
 
   const handleCategoryPress = (category: EventCategory | 'Alle') => {

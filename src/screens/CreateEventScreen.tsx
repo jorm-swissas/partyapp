@@ -22,6 +22,7 @@ import { RootState, AppDispatch } from '../store';
 import { formatPrice } from '../utils/currency';
 import * as Location from 'expo-location';
 import LocationAutocompleteFree from '../components/LocationAutocompleteFree';
+import { uploadEventImage } from '../services/storageService';
 
 type CreateEventScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CreateEvent'>;
 
@@ -52,7 +53,7 @@ const CreateEventScreen: React.FC = () => {
 
   const categories: EventCategory[] = ['Hausparty', 'Party', 'Gaming', 'Outdoor', 'Konzert', 'Club'];
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isLoggedIn || !user) {
       // User hat alles ausgefüllt, aber ist nicht angemeldet
       Alert.alert(
@@ -60,8 +61,8 @@ const CreateEventScreen: React.FC = () => {
         'Um dein Event zu veröffentlichen, musst du dich kurz anmelden. Deine Eingaben gehen nicht verloren!',
         [
           { text: 'Abbrechen', style: 'cancel' },
-          { 
-            text: 'Jetzt anmelden', 
+          {
+            text: 'Jetzt anmelden',
             style: 'default',
             onPress: () => navigation.navigate('Profile')
           },
@@ -75,26 +76,39 @@ const CreateEventScreen: React.FC = () => {
       return;
     }
 
-    const eventData = {
-      title: title.trim(),
-      description: description.trim(),
-      location: location.trim(),
-      latitude,
-      longitude,
-      date: date.toISOString().split('T')[0],
-      time: time.toTimeString().slice(0, 5),
-      category,
-      imageUri,
-      maxParticipants: maxParticipants ? parseInt(maxParticipants) : undefined,
-      price: price ? parseFloat(price) : undefined,
-      currency,
-      createdBy: user.id, // Event mit User verknüpfen
-    };
+    try {
+      // Upload image to Firebase Storage if exists
+      let uploadedImageUri = imageUri;
+      if (imageUri) {
+        // Generate a temporary ID for the event (will be replaced by Firestore)
+        const tempEventId = `temp_${Date.now()}`;
+        uploadedImageUri = await uploadEventImage(imageUri, tempEventId);
+      }
 
-    dispatch(createEvent(eventData));
-    Alert.alert('Erfolg', 'Event wurde erstellt!', [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+      const eventData = {
+        title: title.trim(),
+        description: description.trim(),
+        location: location.trim(),
+        latitude,
+        longitude,
+        date: date.toISOString().split('T')[0],
+        time: time.toTimeString().slice(0, 5),
+        category,
+        imageUri: uploadedImageUri,
+        maxParticipants: maxParticipants ? parseInt(maxParticipants) : undefined,
+        price: price ? parseFloat(price) : undefined,
+        currency,
+        createdBy: user.id, // Event mit User verknüpfen
+      };
+
+      await dispatch(createEvent(eventData)).unwrap();
+      Alert.alert('Erfolg', 'Event wurde erstellt!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      Alert.alert('Fehler', error.message || 'Event konnte nicht erstellt werden. Bitte versuche es erneut.');
+    }
   };
 
   const pickImage = async () => {

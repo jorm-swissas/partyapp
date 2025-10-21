@@ -29,6 +29,23 @@ export const fetchEvents = createAsyncThunk(
   }
 );
 
+// Subscribe to real-time event updates
+export const subscribeToEventsRealtime = createAsyncThunk(
+  'events/subscribeToEventsRealtime',
+  async (_, { dispatch, rejectWithValue }) => {
+    try {
+      const unsubscribe = subscribeToEvents((events) => {
+        dispatch(setEvents(events));
+      });
+
+      // Return the unsubscribe function
+      return unsubscribe;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const createEvent = createAsyncThunk(
   'events/createEvent',
   async (eventData: Omit<Event, 'id' | 'createdAt'>, { rejectWithValue }) => {
@@ -104,8 +121,7 @@ const eventSlice = createSlice({
         state.error = null;
       })
       .addCase(createEvent.fulfilled, (state, action) => {
-        state.events.unshift(action.payload);
-        state.filteredEvents = filterEventsByCategory(state.events, state.selectedCategory);
+        // Don't add event manually - real-time listener will handle it
         state.isLoading = false;
         state.error = null;
       })

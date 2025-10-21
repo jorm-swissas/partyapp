@@ -1,0 +1,58 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // Helper function to check if file size is under 5MB
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Events images
+    match /events/{imageId} {
+      // Anyone can read event images (public)
+      allow read: if true;
+
+      // Only authenticated users can upload images
+      // Images must be under 5MB and must be image files
+      allow create: if isSignedIn()
+                    && isImage()
+                    && isUnder5MB();
+
+      // Only authenticated users can update images
+      allow update: if isSignedIn()
+                    && isImage()
+                    && isUnder5MB();
+
+      // Only authenticated users can delete images
+      // Note: In practice, only event owners should delete, but we can't
+      // cross-reference Firestore from Storage rules
+      allow delete: if isSignedIn();
+    }
+
+    // User profile images (future feature)
+    match /users/{userId}/{imageId} {
+      // Anyone can read profile images
+      allow read: if true;
+
+      // Only the user can upload/update their profile image
+      allow create, update: if isSignedIn()
+                            && request.auth.uid == userId
+                            && isImage()
+                            && isUnder5MB();
+
+      // Only the user can delete their profile image
+      allow delete: if isSignedIn()
+                    && request.auth.uid == userId;
+    }
+  }
+}

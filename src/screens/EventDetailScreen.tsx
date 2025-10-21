@@ -174,7 +174,7 @@ const EventDetailScreen: React.FC = () => {
 
           <View style={styles.metaSection}>
             <Text style={styles.metaText}>
-              Erstellt am {new Date(event.createdAt).toLocaleDateString('de-DE')}
+              Erstellt am {event.createdAt ? new Date(event.createdAt).toLocaleDateString('de-DE') : 'Unbekannt'}
             </Text>
           </View>
         </View>
